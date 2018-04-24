@@ -47,72 +47,104 @@ while (true) {
     // To debug: printErr('Debug messages...');
     var reineAlliee = findReine(units);
     var coordsFuite = [0,0];
-    var closestEnnemyKnight = [];
+    var closestEnnemyKnight = arrayUnits(units, 'knight',1);
     //coordsFuite sera direction opposé du closest ennemy knight
-    /*if(){
-
-    }*/
+    if(closestEnnemyKnight.length !== 0){
+        if ((reineAlliee[0] - closestEnnemyKnight[0][0] > 0)){
+            coordsFuite[0] = reineAlliee[0] + 60;
+        } else {
+            coordsFuite[0] = reineAlliee[0] - 60;
+        }
+        if ((reineAlliee[1] - closestEnnemyKnight[0][1] > 0)){
+            coordsFuite[1] = reineAlliee[1] + 60;
+        } else {
+            coordsFuite[1] = reineAlliee[1] - 60;
+        }
+    }
     var sitePlusProche = closestFreeSite(reineAlliee[0],reineAlliee[1], sitesState, sites);
 
     var buildMove = [sitePlusProche[0], sitePlusProche[1]];
 
     //find free barracks
     var toBuild = findFreeBarracks(sitesState);
-    /*if(toBuild.length != 0){
-        var buildString = " ";
-        for(var i = 0; i < toBuild.length; i++){
-            if (gold >= 80){
-                buildString += String(toBuild[i]) + " ";
-                gold -= 80;
-            }
-        }
-        buildString = buildString.slice(0,-1);
-    }*/
-    
-    /* 
-    * Décision Train
-    * si aucun archer -> créer archer
-    * si aucun géant -> créer géant && towerEnnemy > 0
-    * sinon -> créer knight
-    * 
-    * Décision Queen
-    * si touched && 0 caserne Archer -> build caserne Archer
-    * si touched && 0 caserne Knight -> build caserne knight
-    * si touched && 0 caser Giant -> build caserne giant
-    * si touched && < 1 tower -> build tower
-    * 
-    * sinon move
-    */
+
     var barrackKnight = arrayBuildings(sitesState, 'barrackKnight', 0);
     var barrackArcher = arrayBuildings(sitesState, 'barrackArcher', 0);
     var barrackGiant = arrayBuildings(sitesState, 'barrackGiant', 0);
     var tower = arrayBuildings(sitesState, 'tower', 0);
 
     //boolean needToBuild
-    var needToBuild = (barrackKnight.length) > 0 && b(arrackArcher.length > 0) && (barrackGiant.length > 0) && (tower.length > 1);
+    var NoNeedToBuild = (barrackKnight.length > 0 ) /*&& (barrackArcher.length > 0)*/&& (barrackGiant.length > 0) && (tower.length > 1);
 
-    //décision Queen
-    if (touchedSite == -1 || (touchedSite != -1 && findStatusforId(touchedSite, sitesState) == 2)){
+    /* 
+    * Décision Queen
+    * si touched && 0 caserne Knight -> build caserne Knight
+    * si touched && 0 caserne Archer -> build caserne Archer
+    * si touched && 0 caser Giant -> build caserne giant
+    * si touched && < 1 tower -> build tower
+    * 
+    * sinon move
+    */
+    if (touchedSite == -1 || (touchedSite != -1 && (findStatusforId(touchedSite, sitesState) == 2 || findStatusforId(touchedSite, sitesState) == 1))){
         //on bouge, mais où ?
-        if(needToBuild){
+        if(!NoNeedToBuild){
             print('MOVE',buildMove[0], buildMove[1]);
         } else {
-            print('MOVE vers fuite')
+            print('MOVE',coordsFuite[0], coordsFuite[1]);
         }
     } else {
         //on build, mais quoi ?
-        if(barrackArcher.length === 0 ){
-            print('BUILD', touchedSite, 'BARRACKS-ARCHER');
-        } else if(barrackKnight.length === 0 ){
+        if(barrackKnight.length === 0 ){
             print('BUILD', touchedSite, 'BARRACKS-KNIGHT');
-        } else if(barrackGiant.length === 0 ){
+        }/* else if(barrackArcher.length === 0 ){
+            print('BUILD', touchedSite, 'BARRACKS-ARCHER');
+        }*/ else if(barrackGiant.length === 0 ){
             print('BUILD', touchedSite, 'BARRACKS-GIANT');
         } else {
             print('BUILD', touchedSite, 'TOWER');
         }
     }
 
-    //décision Train
+    var archers = arrayUnits(units, 'archer', 0);
+    var knights = arrayUnits(units, 'knight', 0);
+    var giants = arrayUnits(units, 'giant', 0);
+
+    var towerEnnemy = arrayBuildings(sitesState, 'tower', 1);
+
+    /* 
+    * Décision Train
+    * si aucun archer -> créer archer
+    * si aucun géant -> créer géant && towerEnnemy > 0
+    * sinon -> créer knight
+    */
+
+    if(toBuild.length != 0){
+        var buildString = " ";
+        if(knights.length <= 4 && gold >= 140){
+            for(var i = 0; i < toBuild.length; i++){
+                if(barrackKnight.includes(toBuild[i])){
+                    buildString += String(toBuild[i]) +" ";
+                    gold -= 80;
+                }
+            }
+        } else if(towerEnnemy.length > 0 &&  giants.length === 0 && gold >= 140) {
+            for(var i = 0; i < toBuild.length; i++){
+                if(barrackGiant.includes(toBuild[i])){
+                    buildString += String(toBuild[i]) +" ";
+                    gold -= 140;
+                }
+            }
+        } else if( gold >= 210) {
+            for(var i = 0; i < toBuild.length; i++){
+                if(barrackKnight.includes(toBuild[i])){
+                    buildString += String(toBuild[i]) +" ";
+                    gold -= 80;
+                }
+            }
+        }
+        buildString = buildString.slice(0,-1);
+    }
+
     if(toBuild.length != 0){
         print('TRAIN' + buildString);
     } else {
@@ -121,16 +153,19 @@ while (true) {
 }
 
 function closestFreeSite(xReine,yReine, sitesState, sites){
-    var close = [2000,2000, -1];
-    var distClose = Math.abs(close[0] - xReine) + Math.abs(close[1] - yReine);
+    var close = [20000,20000, -1];
+    //var distClose = Math.sqrt(((close[0] - xReine) * (close[0] - xReine)) + ((close[1] - yReine) * (close[1] - yReine)));
+    var distClose = getDistance(close[0], close[1], xReine, yReine);
     for(var i = 0; i < sitesState.length; i++){
         if(sitesState[i][1] == -1){
             //find matching coords
             for(var j = 0; j < sitesState.length; j++){
                 if(sitesState[i][0] == sites[j][0]){
-                    var distSite = Math.abs(sites[j][1] - xReine) + Math.abs(sites[j][2] - yReine);
+                   // var distSite =  Math.sqrt(((sites[j][1] - xReine) * (sites[j][1] - xReine)) + ((sites[j][2] - yReine) * (sites[j][2] - yReine)));
+                    var distSite = getDistance(sites[j][1], sites[j][2], xReine, yReine);
                     if(distSite <= distClose){
-                        close = [sites[j][1], sites[j][2], sites[j][0]]; 
+                        close = [sites[j][1], sites[j][2], sites[j][0]];
+                        distClose = distSite;
                     }
                 }
             }
@@ -187,7 +222,7 @@ function arrayBuildings(sitesState, building, side){
             break;
     }
     for(var i = 0; i < sitesState.length; i++){
-        if(sitesState[i][1] == toSearch && sitesState[i][2] === side){
+        if(sitesState[i][1] == toSearch && sitesState[i][2] == side){
             if(toSearch == 2){
                 if((builtUnit === "knight" && sitesState[i][4] === 0) || (builtUnit === "archer" && sitesState[i][4] == 1) || (builtUnit === "giant" && sitesState[i][4] == 2)){
                     array.push(sitesState[i][0]);
@@ -218,9 +253,20 @@ function arrayUnits(units, type, side){
             break;
     }
     for(var i = 0; i < units.length; i++){
-        if(units[i][2] == side && units[i][3] === toSearch){
+        if(units[i][2] == side && units[i][3] == toSearch){
             array.push(units[i]);
         }
     }
     return array;
 }
+
+function getDistance ( x1, y1, x2, y2 ) {
+	
+	var 	xs = x2 - x1,
+		ys = y2 - y1;		
+	
+	xs *= xs;
+	ys *= ys;
+	 
+	return Math.sqrt( xs + ys );
+};
