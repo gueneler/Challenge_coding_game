@@ -13,6 +13,7 @@ for (var i = 0; i < numSites; i++) {
     var radius = parseInt(inputs[3]);
     sites[i] = [siteId, x, y, radius];
 }
+var firstTower = 0;
 
 // game loop
 while (true) {
@@ -24,12 +25,12 @@ while (true) {
         var inputs = readline().split(' ');
         var siteId = parseInt(inputs[0]);
         var ignore1 = parseInt(inputs[1]); // used in future leagues
-        var ignore2 = parseInt(inputs[2]); // used in future leagues
+        var maxMine = parseInt(inputs[2]); // used in future leagues
         var structureType = parseInt(inputs[3]); // -1 = No structure, 2 = Barracks
         var owner = parseInt(inputs[4]); // -1 = No structure, 0 = Friendly, 1 = Enemy
         var param1 = parseInt(inputs[5]);
         var param2 = parseInt(inputs[6]);
-        sitesState[i] = [siteId, structureType, owner, param1, param2]; 
+        sitesState[i] = [siteId, structureType, owner, param1, param2, maxMine]; 
     }
     var numUnits = parseInt(readline());
     var units = [];
@@ -47,7 +48,7 @@ while (true) {
     // To debug: printErr('Debug messages...');
     var reineAlliee = findReine(units);
     var coordsFuite = [0,0];
-    var closestEnnemyKnight = arrayUnits(units, 'knight',1);
+    /*var closestEnnemyKnight = arrayUnits(units, 'knight',1);
     //coordsFuite sera direction opposé du closest ennemy knight
     if(closestEnnemyKnight.length !== 0){
         if ((reineAlliee[0] - closestEnnemyKnight[0][0] > 0)){
@@ -60,7 +61,7 @@ while (true) {
         } else {
             coordsFuite[1] = reineAlliee[1] - 60;
         }
-    }
+    }*/
     var sitePlusProche = closestFreeSite(reineAlliee[0],reineAlliee[1], sitesState, sites);
 
     var buildMove = [sitePlusProche[0], sitePlusProche[1]];
@@ -72,9 +73,18 @@ while (true) {
     var barrackArcher = arrayBuildings(sitesState, 'barrackArcher', 0);
     var barrackGiant = arrayBuildings(sitesState, 'barrackGiant', 0);
     var tower = arrayBuildings(sitesState, 'tower', 0);
+    var mines = arrayBuildings(sitesState, 'mine', 0);
+    
+    if (tower.length == 1){
+        firstTower = tower[0];
+    }
 
+    /*if (firstTower !== 0){
+        coordsFuite[0] = firstTower[1];
+        coordsFuite[1] = firstTower[2];
+    }*/
     //boolean needToBuild
-    var NoNeedToBuild = (barrackKnight.length > 0 ) /*&& (barrackArcher.length > 0)*/&& (barrackGiant.length > 0) && (tower.length > 1);
+    var NoNeedToBuild = (barrackKnight.length > 0 ) && (barrackArcher.length > 0)&& (barrackGiant.length > 0) && (tower.length > 1);
 
     /* 
     * Décision Queen
@@ -85,21 +95,50 @@ while (true) {
     * 
     * sinon move
     */
-    if (touchedSite == -1 || (touchedSite != -1 && (findStatusforId(touchedSite, sitesState) == 2 || findStatusforId(touchedSite, sitesState) == 1))){
+    if (touchedSite == -1 || (touchedSite != -1 && (findStatusforId(touchedSite, sitesState) == 2 || findStatusforId(touchedSite, sitesState) == 1 || findStatusforId(touchedSite, sitesState) === 0))){
         //on bouge, mais où ?
         if(!NoNeedToBuild){
-            print('MOVE',buildMove[0], buildMove[1]);
+            var upMine = 0;
+            if(findStatusforId(touchedSite, sitesState) === 0){
+                for(var i = 0; i < sitesState.length; i++){
+                    if(sitesState[i][0] == touchedSite && sitesState[i][3] < sitesState[i][5]){
+                        upMine = 1;
+                    }
+                }
+            }
+
+            if(upMine !== 0){
+                print('BUILD', touchedSite, 'MINE');
+            } else {
+                print('MOVE',buildMove[0], buildMove[1]);
+            }
         } else {
-            print('MOVE',coordsFuite[0], coordsFuite[1]);
+            print('BUILD',/*coordsFuite[0], coordsFuite[1]*/firstTower, "TOWER");
         }
     } else {
         //on build, mais quoi ?
-        if(barrackKnight.length === 0 ){
+       /* var upMine = 0;
+        if(findStatusforId(touchedSite, sitesState) === 0){
+            for(var i = 0; i < sitesState.length; i++){
+                if(sitesState[i][0] == touchedSite && sitesState[3] < sitesState[5]){
+                    upMine = 1;
+                }
+            }
+        }
+        
+        if(upMine !== 0){
+            print('BUILD', touchedSite, 'MINE');
+        }
+        else */if(barrackKnight.length === 0 ){
             print('BUILD', touchedSite, 'BARRACKS-KNIGHT');
-        }/* else if(barrackArcher.length === 0 ){
-            print('BUILD', touchedSite, 'BARRACKS-ARCHER');
-        }*/ else if(barrackGiant.length === 0 ){
+        } else if(mines.length <= 1){
+            print('BUILD', touchedSite, 'MINE');
+        } else if(tower.length === 0){
+            print('BUILD', touchedSite, 'TOWER');
+        } else if(barrackGiant.length === 0 ){
             print('BUILD', touchedSite, 'BARRACKS-GIANT');
+        } else if(barrackArcher.length === 0 ){
+            print('BUILD', touchedSite, 'BARRACKS-ARCHER');
         } else {
             print('BUILD', touchedSite, 'TOWER');
         }
@@ -118,27 +157,33 @@ while (true) {
     * sinon -> créer knight
     */
 
+    var noNeedArcher = archers.length > 1 || barrackArcher.length === 0;
+    var noNeedGiant = giants.length > 0 || barrackGiant.length === 0;
+    //var noNeedKnight = knights.length > 6;
+
     if(toBuild.length != 0){
         var buildString = " ";
-        if(knights.length <= 4 && gold >= 140){
+        if (gold >= 80 && noNeedArcher && noNeedGiant) {
             for(var i = 0; i < toBuild.length; i++){
-                if(barrackKnight.includes(toBuild[i])){
+                if(barrackKnight.includes(toBuild[i]) && gold >= 80){
                     buildString += String(toBuild[i]) +" ";
                     gold -= 80;
                 }
             }
-        } else if(towerEnnemy.length > 0 &&  giants.length === 0 && gold >= 140) {
+        }
+        else if(!noNeedArcher && gold >= 100){
             for(var i = 0; i < toBuild.length; i++){
-                if(barrackGiant.includes(toBuild[i])){
+                if(barrackArcher.includes(toBuild[i]) && gold >= 100){
+                    buildString += String(toBuild[i]) +" ";
+                    gold -= 100;
+                }
+            }
+        } 
+        else if(towerEnnemy.length > 0 &&  !noNeedGiant && noNeedArcher && gold >= 140) {
+            for(var i = 0; i < toBuild.length; i++){
+                if(barrackGiant.includes(toBuild[i]) && gold >= 140){
                     buildString += String(toBuild[i]) +" ";
                     gold -= 140;
-                }
-            }
-        } else if( gold >= 210) {
-            for(var i = 0; i < toBuild.length; i++){
-                if(barrackKnight.includes(toBuild[i])){
-                    buildString += String(toBuild[i]) +" ";
-                    gold -= 80;
                 }
             }
         }
@@ -219,6 +264,9 @@ function arrayBuildings(sitesState, building, side){
         case 'barrackGiant':
             toSearch = 2;
             builtUnit = "giant";
+            break;
+        case 'mine':
+            toSearch = 0;
             break;
     }
     for(var i = 0; i < sitesState.length; i++){
