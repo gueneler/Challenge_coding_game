@@ -24,13 +24,13 @@ while (true) {
     for (var i = 0; i < numSites; i++) {
         var inputs = readline().split(' ');
         var siteId = parseInt(inputs[0]);
-        var gold = parseInt(inputs[1]); // used in future leagues
+        var goldMine = parseInt(inputs[1]); // used in future leagues
         var maxMine = parseInt(inputs[2]); // used in future leagues
         var structureType = parseInt(inputs[3]); // -1 = No structure, 2 = Barracks
         var owner = parseInt(inputs[4]); // -1 = No structure, 0 = Friendly, 1 = Enemy
         var param1 = parseInt(inputs[5]);
         var param2 = parseInt(inputs[6]);
-        sitesState[i] = [siteId, structureType, owner, param1, param2, maxMine, gold]; 
+        sitesState[i] = [siteId, structureType, owner, param1, param2, maxMine, goldMine]; 
     }
     var numUnits = parseInt(readline());
     var units = [];
@@ -76,13 +76,13 @@ while (true) {
     var buildMove = [sitePlusProche[0], sitePlusProche[1]];
 
     //find free barracks
-    var toBuild = findFreeBarracks(withoutEmptyMines);
+    var toBuild = findFreeBarracks(sitesState);    
 
-    var barrackKnight = arrayBuildings(withoutEmptyMines, 'barrackKnight', 0);
-    var barrackArcher = arrayBuildings(withoutEmptyMines, 'barrackArcher', 0);
-    var barrackGiant = arrayBuildings(withoutEmptyMines, 'barrackGiant', 0);
-    var tower = arrayBuildings(withoutEmptyMines, 'tower', 0);
-    var mines = arrayBuildings(withoutEmptyMines, 'mine', 0);
+    var barrackKnight = arrayBuildings(sitesState, 'barrackKnight', 0);
+    var barrackArcher = arrayBuildings(sitesState, 'barrackArcher', 0);
+    var barrackGiant = arrayBuildings(sitesState, 'barrackGiant', 0);
+    var tower = arrayBuildings(sitesState, 'tower', 0);
+    var mines = arrayBuildings(sitesState, 'mine', 0);
     
     if (tower.length == 1){
         firstTower = tower[0];
@@ -158,7 +158,7 @@ while (true) {
     var knights = arrayUnits(units, 'knight', 0);
     var giants = arrayUnits(units, 'giant', 0);
 
-    var towerEnnemy = arrayBuildings(withoutEmptyMines, 'tower', 1);
+    var towerEnnemy = arrayBuildings(sitesState, 'tower', 1);
 
     /* 
     * Décision Train
@@ -171,9 +171,9 @@ while (true) {
     var noNeedGiant = giants.length > 0 || barrackGiant.length === 0;
     //var noNeedKnight = knights.length > 6;
 
-    if(toBuild.length >= 1){
+    if(toBuild.length > 0){
         var buildString = " ";
-        if (gold >= 80 && noNeedArcher && noNeedGiant) {
+        /*if (gold >= 80 && noNeedArcher && noNeedGiant) {
             for(var i = 0; i < toBuild.length; i++){
                 if(barrackKnight.includes(toBuild[i]) && gold >= 80){
                     buildString += String(toBuild[i]) +" ";
@@ -196,7 +196,24 @@ while (true) {
                     gold -= 140;
                 }
             }
-        } else if(gold >= 140){
+        } else*/ 
+        if(gold >= 100 && barrackArcher.length > 0 && archers.length < 2){
+            for(var i = 0; i < toBuild.length; i++){
+                if(barrackArcher.includes(toBuild[i])){
+                    buildString += String(toBuild[i]) +" ";
+                    gold -= 100;
+                }
+            }
+        }
+        else if(gold >= 140 && barrackGiant.length > 0 && giants.length < 1 && towerEnnemy.length > 0){
+            for(var i = 0; i < toBuild.length; i++){
+                if(barrackGiant.includes(toBuild[i]) && gold >= 80){
+                    buildString += String(toBuild[i]) +" ";
+                    gold -= 140;
+                }
+            }
+        }
+        else if(gold >= 80){
             for(var i = 0; i < toBuild.length; i++){
                 if(barrackKnight.includes(toBuild[i]) && gold >= 80){
                     buildString += String(toBuild[i]) +" ";
